@@ -1,0 +1,125 @@
+
+import csv
+import os
+from pathlib import Path
+
+import psycopg
+from psycopg import sql
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data" / "raw"
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+
+def get_table_name(csv_path: Path) -> str:
+    name = csv_path.stem.removeprefix("olist_")
+    return name.removesuffix("_dataset")
+
+
+def load_csv(conn, csv_path: Path) -> None:
+    table_name = get_table_name(csv_path)
+
+    with csv_path.open(
+        "r", encoding="utf-8-sig", newline=""
+    ) as file:
+        reader = csv.reader(file)
+        columns = next(reader)
+
+        if not columns or len(columns) != len(set(columns)):
+            raise ValueError(
+                f"Invalid CSV headers: {csv_path.name}"
+            )
+
+        staging_columns = [
+            "source_file",
+            "source_row_number",
+            *columns,
+        ]
+
+        with conn.cursor() as cursor:
+            cursor.execute(
+                sql.SQL("""
+                    CREATE TEMP TABLE staging (
+                        LIKE {} INCLUDING DEFAULTS
+                    ) ON COMMIT DROP
+                """).format(
+                    sql.Identifier("olist_raw", table_name)
+                )
+            )
+
+            copy_statement = sql.SQL(
+                "COPY staging ({}) FROM STDIN"
+            ).format(
+                sql.SQL(", ").join(
+                    map(sql.Identifier, staging_columns)
+                )
+            )
+
+            row_count = 0
+
+            with cursor.copy(copy_statement) as copy:
+                for row_number, row in enumerate(
+                    reader, start=1
+                ):
+                    copy.write_row(
+                        (
+                            csv_path.name,
+                            row_number,
+                            *[
+                                value if value != "" else None
+                                for value in row
+                            ],
+                        )
+                    )
+                    row_count += 1
+
+            column_names = sql.SQL(", ").join(
+                map(sql.Identifier, staging_columns)
+            )
+
+            cursor.execute(
+                sql.SQL("""
+                    INSERT INTO {} ({})
+                    SELECT {} FROM staging
+                    WHERE TRUE
+                    ON CONFLICT (
+                        source_file,
+                        source_row_number
+                    ) DO NOTHING
+                """).format(
+                    sql.Identifier("olist_raw", table_name),
+                    column_names,
+                    column_names,
+                )
+            )
+
+            inserted = cursor.rowcount
+
+        print(
+            f"{table_name}: "
+            f"source={row_count:,}, "
+            f"inserted={inserted:,}, "
+            f"already_present={row_count - inserted:,}"
+        )
+
+
+def main() -> None:
+    csv_files = sorted(DATA_DIR.glob("*.csv"))
+
+    if not csv_files:
+        raise FileNotFoundError(
+            f"No CSV files found in {DATA_DIR}"
+        )
+
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        for csv_path in csv_files:
+            # Each file is an independent transaction.
+            with conn.transaction():
+                load_csv(conn, csv_path)
+
+
+if __name__ == "__main__":
+    main()
+
