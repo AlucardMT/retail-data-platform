@@ -218,3 +218,38 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*service-account*.json
+*credentials*.json
+
+# Local datasets
+data/*
+!data/.gitkeep
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+
+# dbt generated files
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Local configuration
+.idea/
+.vscode/
+.DS_Store
+
