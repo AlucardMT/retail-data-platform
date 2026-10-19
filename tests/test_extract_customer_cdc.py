@@ -75,6 +75,10 @@ def test_extractor_discovers_committed_event_without_acknowledging():
         assert event["operation"] == "U"
         assert event["before_data"]["customer_city"] == "sao paulo"
         assert event["after_data"]["customer_city"] == "rio de janeiro"
+        assert "customer_id" in event
+        assert event["recorded_at"] is not None
+        assert event["recorded_at"].tzinfo is not None
+        assert event["schema_version"] == 1
 
         # Reading must not acknowledge the event.
         second_batch = fetch_pending_customer_events(

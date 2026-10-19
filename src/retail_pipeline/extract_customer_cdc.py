@@ -31,10 +31,13 @@ def fetch_pending_customer_events(
                     e.event_id,
                     e.event_uuid,
                     e.customer_unique_id,
+                    e.customer_id,
                     e.operation,
                     e.event_timestamp,
+                    e.recorded_at,
                     e.before_data,
-                    e.after_data
+                    e.after_data,
+                    e.schema_version
                 FROM cdc.customer_events AS e
                 WHERE NOT EXISTS (
                     SELECT 1
