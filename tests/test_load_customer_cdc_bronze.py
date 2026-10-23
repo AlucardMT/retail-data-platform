@@ -2,7 +2,6 @@
 
 import pytest
 import uuid
-import json
 from datetime import datetime, timezone
 from retail_pipeline.load_customer_cdc_bronze import (
     ingest_customer_cdc,
@@ -60,10 +59,13 @@ def test_serialize_customer_cdc_event():
     assert result["event_timestamp"] == event_timestamp.isoformat()
     assert result["recorded_at"] == recorded_at.isoformat()
 
-    assert json.loads(result["before_data"]) == {
+    assert isinstance(result["before_data"], dict)
+    assert result["before_data"] == {
         "customer_city": "sao paulo"
     }
-    assert json.loads(result["after_data"]) == {
+
+    assert isinstance(result["after_data"], dict)
+    assert result["after_data"] == {
         "customer_city": "rio de janeiro"
     }
 

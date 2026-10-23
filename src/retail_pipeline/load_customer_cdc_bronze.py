@@ -9,7 +9,6 @@ Responsibilities:
 Bronze preserves raw events, including duplicates from retries.
 Deduplication will take place in the Silver layer.
 """
-import json
 from datetime import datetime, timezone
 from google.cloud import bigquery
 from retail_pipeline.extract_customer_cdc import (
@@ -33,16 +32,8 @@ def serialize_customer_cdc_event(event: dict) -> dict:
         "operation": event["operation"],
         "event_timestamp": event["event_timestamp"].isoformat(),
         "recorded_at": event["recorded_at"].isoformat(),
-        "before_data": (
-             json.dumps(event["before_data"])
-             if event["before_data"] is not None
-             else None
-        ),
-        "after_data": (
-            json.dumps(event["after_data"])
-            if event["after_data"] is not None
-            else None
-        ),
+        "before_data": event["before_data"],
+        "after_data": event["after_data"],
         "schema_version": event["schema_version"],
         "ingested_at": ingested_at.isoformat(),
     }

@@ -363,6 +363,18 @@ def test_customer_update_rolls_back_when_event_insert_fails(
 
     assert original_address is not None
 
+    # Record existing CDC history before the simulated failure.
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT COUNT(*)
+            FROM cdc.customer_events
+            WHERE customer_unique_id = %s
+            """,
+            (TEST_CUSTOMER_ID,),
+        )
+        original_event_count = cur.fetchone()[0]
+
     # Create a temporary, transaction-scoped trigger function
     # that deliberately rejects CDC event inserts.
     with conn.cursor() as cur:
@@ -431,7 +443,7 @@ def test_customer_update_rolls_back_when_event_insert_fails(
             (TEST_CUSTOMER_ID,),
         )
 
-        assert cur.fetchone()[0] == 0
+        assert cur.fetchone()[0] == original_event_count
 
 
 def test_customer_row_lock_blocks_concurrent_update(
