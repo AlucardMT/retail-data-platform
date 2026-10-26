@@ -253,3 +253,6 @@ dbt/dbt_packages/
 .vscode/
 .DS_Store
 
+
+# Python 3.12 virtual environment
+.venv312/
