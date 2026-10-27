@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: int_customer_history
+    description: >
+      Silver SCD Type 2 customer history reconstructed
+      from deduplicated CDC events.
+    columns:
+      - name: customer_version_key
+        description: Deterministic identifier for each customer history version.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: customer_unique_id
+        description: Business identifier of the customer.
+        data_tests:
+          - not_null

@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: "Raw CDC events ingested from PostgreSQL into BigQuery."
+    database: retail-data-platform-512111
+    schema: bronze
+    tables:
+      - name: customer_cdc_events
+        description: "Append-only customer CDC events."
+        columns:
+          - name: event_uuid
+            description: "Unique identifier assigned to each source CDC event."
+            data_tests:
+              - not_null
+
+          - name: customer_unique_id
+            description: "Business identifier of the customer."
+            data_tests:
+              - not_null
+
+          - name: operation
+            description: "CDC operation code."
+            data_tests:
+              - not_null
+              - accepted_values:
+                  arguments:
+                    values: ['I', 'U', 'D']

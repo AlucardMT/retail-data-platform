@@ -1,0 +1,129 @@
+unit_tests:
+- name: unit_customer_history_insert
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''event01'' AS event_uuid, 1 AS event_id, ''test_insert'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      '
+  expect:
+    format: sql
+    rows: SELECT '5de2358311a6390b879e75fb3e80ea238d3ce2fb998f35f5e518f456bad04062' AS customer_version_key, 'event01' AS source_event_uuid, 'test_insert' AS customer_unique_id, 'cajamar' AS customer_city, 'SP' AS customer_state, '07787' AS customer_zip_code_prefix, TIMESTAMP '2026-01-01 10:00:00+00' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+- name: unit_customer_history_update
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''event02'' AS event_uuid, 2 AS event_id, ''test_update'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix
+
+      '
+  expect:
+    format: sql
+    rows: 'SELECT ''379aaeecea3d38561fa602d87f557b8a034ad976d47f5ab3c5f6b29ccd890174'' AS customer_version_key, ''event02'' AS source_event_uuid, ''test_update'' AS customer_unique_id, ''cajamar'' AS customer_city, ''SP'' AS customer_state, ''07787'' AS customer_zip_code_prefix, CAST(NULL AS TIMESTAMP) AS valid_from, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_to, FALSE AS is_current, TRUE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''860ed9cc103291752937e43b0196a572c861413d0be960c97377d5656b1d6375'' AS customer_version_key, ''event02'' AS source_event_uuid, ''test_update'' AS customer_unique_id, ''sao paulo'' AS customer_city, ''SP'' AS customer_state, ''01310'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict'
+- name: unit_customer_history_delete
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''event03'' AS event_uuid, 3 AS event_id, ''test_delete'' AS customer_unique_id, ''D'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, CAST(NULL AS JSON) AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, CAST(NULL AS STRING) AS after_customer_city, CAST(NULL AS STRING) AS after_customer_state, CAST(NULL AS STRING) AS after_customer_zip_code_prefix
+
+      '
+  expect:
+    format: sql
+    rows: SELECT 'fc9e9485e4792a806ffb070c0ccde515b2dfd0cdcbca810c83cd8f90a4f2dbab' AS customer_version_key, 'event03' AS source_event_uuid, 'test_delete' AS customer_unique_id, 'cajamar' AS customer_city, 'SP' AS customer_state, '07787' AS customer_zip_code_prefix, CAST(NULL AS TIMESTAMP) AS valid_from, TIMESTAMP '2026-01-01 10:00:00+00' AS valid_to, FALSE AS is_current, TRUE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+- name: unit_customer_history_noop
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''event04'' AS event_uuid, 4 AS event_id, ''test_noop'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      '
+  expect:
+    format: sql
+    rows: SELECT '750e66aafe94cdf7966b5f0419853fd359dcdc29aa9003dc46d70ef390919d6b' AS customer_version_key, 'event04' AS source_event_uuid, 'test_noop' AS customer_unique_id, 'cajamar' AS customer_city, 'SP' AS customer_state, '07787' AS customer_zip_code_prefix, CAST(NULL AS TIMESTAMP) AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, TRUE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+- name: unit_customer_history_delete_reinsert
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''reinsert01'' AS event_uuid, 1 AS event_id, ''test_reinsert'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''reinsert02'' AS event_uuid, 2 AS event_id, ''test_reinsert'' AS customer_unique_id, ''D'' AS operation, TIMESTAMP ''2026-01-02 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, CAST(NULL AS JSON) AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, CAST(NULL AS STRING) AS after_customer_city, CAST(NULL AS STRING) AS after_customer_state, CAST(NULL AS STRING) AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''reinsert03'' AS event_uuid, 3 AS event_id, ''test_reinsert'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-03 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix'
+  expect:
+    format: sql
+    rows: 'SELECT ''f66e6b5ac84f62b3a7263910215180392746de67b853743df83255c1b48e423c'' AS customer_version_key, ''reinsert01'' AS source_event_uuid, ''test_reinsert'' AS customer_unique_id, ''cajamar'' AS customer_city, ''SP'' AS customer_state, ''07787'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, TIMESTAMP ''2026-01-02 10:00:00+00'' AS valid_to, FALSE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''a654217624cd60208a839dceb4bd7980072339b98bd8f7c5d1296d092899a865'' AS customer_version_key, ''reinsert03'' AS source_event_uuid, ''test_reinsert'' AS customer_unique_id, ''sao paulo'' AS customer_city, ''SP'' AS customer_state, ''01310'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-03 10:00:00+00'' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict'
+- name: unit_customer_history_late_arrival
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''late01'' AS event_uuid, 1 AS event_id, ''test_late'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''late03'' AS event_uuid, 3 AS event_id, ''test_late'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-03 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS before_json, PARSE_JSON(''{"customer_city":"campinas","customer_state":"SP","customer_zip_code_prefix":"13000"}'') AS after_json, ''sao paulo'' AS before_customer_city, ''SP'' AS before_customer_state, ''01310'' AS before_customer_zip_code_prefix, ''campinas'' AS after_customer_city, ''SP'' AS after_customer_state, ''13000'' AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''late02'' AS event_uuid, 99 AS event_id, ''test_late'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-02 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix'
+  expect:
+    format: sql
+    rows: 'SELECT ''786255ff6bd5f53c9550a16f775c39a69b5fa8a77b04a7b8df7606b551927981'' AS customer_version_key, ''late01'' AS source_event_uuid, ''test_late'' AS customer_unique_id, ''cajamar'' AS customer_city, ''SP'' AS customer_state, ''07787'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, TIMESTAMP ''2026-01-02 10:00:00+00'' AS valid_to, FALSE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''0fcfb8dd01a7671497832beaa3b8dba11d141ce162d627ec613192db6a0a0cb1'' AS customer_version_key, ''late02'' AS source_event_uuid, ''test_late'' AS customer_unique_id, ''sao paulo'' AS customer_city, ''SP'' AS customer_state, ''01310'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-02 10:00:00+00'' AS valid_from, TIMESTAMP ''2026-01-03 10:00:00+00'' AS valid_to, FALSE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''480072ffa54d9229aea571b21cad7d6d0fa5e95444df47c7b2c03e79c2364db6'' AS customer_version_key, ''late03'' AS source_event_uuid, ''test_late'' AS customer_unique_id, ''campinas'' AS customer_city, ''SP'' AS customer_state, ''13000'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-03 10:00:00+00'' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, FALSE AS has_transition_conflict'
+- name: unit_customer_history_transition_conflict
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''conflict01'' AS event_uuid, 1 AS event_id, ''test_conflict'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''conflict02'' AS event_uuid, 2 AS event_id, ''test_conflict'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-02 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"campinas","customer_state":"SP","customer_zip_code_prefix":"13000"}'') AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json, ''campinas'' AS before_customer_city, ''SP'' AS before_customer_state, ''13000'' AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix'
+  expect:
+    format: sql
+    rows: 'SELECT ''947e67ce328307a3936a657e33fb69a3d3519fffa332be081b2f4f886345c43c'' AS customer_version_key, ''conflict01'' AS source_event_uuid, ''test_conflict'' AS customer_unique_id, ''cajamar'' AS customer_city, ''SP'' AS customer_state, ''07787'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, TIMESTAMP ''2026-01-02 10:00:00+00'' AS valid_to, FALSE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, TRUE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''f04b9b9010b097f8c2448435c3631af3eb0004fa397de8e963709503a35e5af0'' AS customer_version_key, ''conflict02'' AS source_event_uuid, ''test_conflict'' AS customer_unique_id, ''sao paulo'' AS customer_city, ''SP'' AS customer_state, ''01310'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-02 10:00:00+00'' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, FALSE AS has_ordering_ambiguity, TRUE AS has_transition_conflict'
+- name: unit_customer_history_timestamp_collision
+  model: int_customer_history
+  given:
+  - input: ref('stg_customer_cdc_events')
+    format: sql
+    rows: 'SELECT ''collision01'' AS event_uuid, 1 AS event_id, ''test_collision'' AS customer_unique_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix
+
+      UNION ALL
+
+      SELECT ''collision02'' AS event_uuid, 2 AS event_id, ''test_collision'' AS customer_unique_id, ''U'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix'
+  expect:
+    format: sql
+    rows: 'SELECT ''8367ba4364ad6778ca5d1b20552aad053dcc2bdec627e257dee9d35da3f943a5'' AS customer_version_key, ''collision01'' AS source_event_uuid, ''test_collision'' AS customer_unique_id, ''cajamar'' AS customer_city, ''SP'' AS customer_state, ''07787'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_to, FALSE AS is_current, FALSE AS is_inferred, TRUE AS has_ordering_ambiguity, FALSE AS has_transition_conflict
+
+      UNION ALL
+
+      SELECT ''0297b13214aaf305bf0e70ce58e94d62a1d3cb4e803db05469eeb721bd27c9ef'' AS customer_version_key, ''collision02'' AS source_event_uuid, ''test_collision'' AS customer_unique_id, ''sao paulo'' AS customer_city, ''SP'' AS customer_state, ''01310'' AS customer_zip_code_prefix, TIMESTAMP ''2026-01-01 10:00:00+00'' AS valid_from, CAST(NULL AS TIMESTAMP) AS valid_to, TRUE AS is_current, FALSE AS is_inferred, TRUE AS has_ordering_ambiguity, FALSE AS has_transition_conflict'

@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: stg_customer_cdc_events
+    description: >
+      Normalised and deduplicated customer CDC events
+      sourced from the BigQuery Bronze layer.
+    columns:
+      - name: event_uuid
+        description: Unique identifier for each CDC event.
+        data_tests:
+          - not_null
+          - unique
+
+      - name: customer_unique_id
+        description: Business identifier for the customer.
+        data_tests:
+          - not_null
+
+      - name: operation
+        description: CDC operation code.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['I', 'U', 'D']
+
+      - name: event_timestamp
+        description: Timestamp of the source CDC event.
+        data_tests:
+          - not_null

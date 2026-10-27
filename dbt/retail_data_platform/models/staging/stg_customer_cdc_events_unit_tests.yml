@@ -1,0 +1,66 @@
+unit_tests:
+- name: unit_staging_duplicate_uuid
+  model: stg_customer_cdc_events
+  given:
+  - input: source('bronze', 'customer_cdc_events')
+    format: sql
+    rows: 'SELECT 1 AS event_id, ''duplicate01'' AS event_uuid, ''test_duplicate'' AS customer_unique_id, ''test_duplicate_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-01 10:00:00+00'' AS ingested_at
+
+      UNION ALL
+
+      SELECT 1 AS event_id, ''duplicate01'' AS event_uuid, ''test_duplicate'' AS customer_unique_id, ''test_duplicate_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-02 10:00:00+00'' AS ingested_at'
+  expect:
+    format: sql
+    rows: SELECT 1 AS event_id, 'duplicate01' AS event_uuid, 'test_duplicate' AS customer_unique_id, 'test_duplicate_profile' AS customer_id, 'I' AS operation, TIMESTAMP '2026-01-01 10:00:00+00' AS event_timestamp, TIMESTAMP '2026-01-01 10:00:00+00' AS recorded_at, 1 AS schema_version, TIMESTAMP '2026-01-02 10:00:00+00' AS ingested_at, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, 'cajamar' AS after_customer_city, 'SP' AS after_customer_state, '07787' AS after_customer_zip_code_prefix, CAST(NULL AS JSON) AS before_json, PARSE_JSON('{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}') AS after_json
+- name: unit_staging_latest_ingestion_wins
+  model: stg_customer_cdc_events
+  given:
+  - input: source('bronze', 'customer_cdc_events')
+    format: sql
+    rows: 'SELECT 10 AS event_id, ''latest01'' AS event_uuid, ''test_latest'' AS customer_unique_id, ''test_latest_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-01 10:00:00+00'' AS ingested_at
+
+      UNION ALL
+
+      SELECT 9 AS event_id, ''latest01'' AS event_uuid, ''test_latest'' AS customer_unique_id, ''test_latest_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-03 10:00:00+00'' AS ingested_at'
+  expect:
+    format: sql
+    rows: SELECT 9 AS event_id, 'latest01' AS event_uuid, 'test_latest' AS customer_unique_id, 'test_latest_profile' AS customer_id, 'I' AS operation, TIMESTAMP '2026-01-01 10:00:00+00' AS event_timestamp, TIMESTAMP '2026-01-01 10:00:00+00' AS recorded_at, 1 AS schema_version, TIMESTAMP '2026-01-03 10:00:00+00' AS ingested_at, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, 'sao paulo' AS after_customer_city, 'SP' AS after_customer_state, '01310' AS after_customer_zip_code_prefix, CAST(NULL AS JSON) AS before_json, PARSE_JSON('{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}') AS after_json
+- name: unit_staging_event_id_tiebreak
+  model: stg_customer_cdc_events
+  given:
+  - input: source('bronze', 'customer_cdc_events')
+    format: sql
+    rows: 'SELECT 20 AS event_id, ''tie01'' AS event_uuid, ''test_tie'' AS customer_unique_id, ''test_tie_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-02 10:00:00+00'' AS ingested_at
+
+      UNION ALL
+
+      SELECT 21 AS event_id, ''tie01'' AS event_uuid, ''test_tie'' AS customer_unique_id, ''test_tie_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"campinas","customer_state":"SP","customer_zip_code_prefix":"13000"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-02 10:00:00+00'' AS ingested_at'
+  expect:
+    format: sql
+    rows: SELECT 21 AS event_id, 'tie01' AS event_uuid, 'test_tie' AS customer_unique_id, 'test_tie_profile' AS customer_id, 'I' AS operation, TIMESTAMP '2026-01-01 10:00:00+00' AS event_timestamp, TIMESTAMP '2026-01-01 10:00:00+00' AS recorded_at, 1 AS schema_version, TIMESTAMP '2026-01-02 10:00:00+00' AS ingested_at, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, 'campinas' AS after_customer_city, 'SP' AS after_customer_state, '13000' AS after_customer_zip_code_prefix, CAST(NULL AS JSON) AS before_json, PARSE_JSON('{"customer_city":"campinas","customer_state":"SP","customer_zip_code_prefix":"13000"}') AS after_json
+- name: unit_staging_distinct_events
+  model: stg_customer_cdc_events
+  given:
+  - input: source('bronze', 'customer_cdc_events')
+    format: sql
+    rows: 'SELECT 30 AS event_id, ''distinct01'' AS event_uuid, ''test_distinct'' AS customer_unique_id, ''test_distinct_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, CAST(NULL AS JSON) AS before_data, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-01 10:00:00+00'' AS ingested_at
+
+      UNION ALL
+
+      SELECT 31 AS event_id, ''distinct02'' AS event_uuid, ''test_distinct'' AS customer_unique_id, ''test_distinct_profile'' AS customer_id, ''U'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_data, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_data, 1 AS schema_version, TIMESTAMP ''2026-01-02 10:00:00+00'' AS ingested_at'
+  expect:
+    format: sql
+    rows: 'SELECT 30 AS event_id, ''distinct01'' AS event_uuid, ''test_distinct'' AS customer_unique_id, ''test_distinct_profile'' AS customer_id, ''I'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, 1 AS schema_version, TIMESTAMP ''2026-01-01 10:00:00+00'' AS ingested_at, CAST(NULL AS STRING) AS before_customer_city, CAST(NULL AS STRING) AS before_customer_state, CAST(NULL AS STRING) AS before_customer_zip_code_prefix, ''cajamar'' AS after_customer_city, ''SP'' AS after_customer_state, ''07787'' AS after_customer_zip_code_prefix, CAST(NULL AS JSON) AS before_json, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS after_json
+
+      UNION ALL
+
+      SELECT 31 AS event_id, ''distinct02'' AS event_uuid, ''test_distinct'' AS customer_unique_id, ''test_distinct_profile'' AS customer_id, ''U'' AS operation, TIMESTAMP ''2026-01-01 10:00:00+00'' AS event_timestamp, TIMESTAMP ''2026-01-01 10:00:00+00'' AS recorded_at, 1 AS schema_version, TIMESTAMP ''2026-01-02 10:00:00+00'' AS ingested_at, ''cajamar'' AS before_customer_city, ''SP'' AS before_customer_state, ''07787'' AS before_customer_zip_code_prefix, ''sao paulo'' AS after_customer_city, ''SP'' AS after_customer_state, ''01310'' AS after_customer_zip_code_prefix, PARSE_JSON(''{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}'') AS before_json, PARSE_JSON(''{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}'') AS after_json'
+- name: unit_staging_json_string_normalisation
+  model: stg_customer_cdc_events
+  given:
+  - input: source('bronze', 'customer_cdc_events')
+    format: sql
+    rows: SELECT 40 AS event_id, 'encoded01' AS event_uuid, 'test_encoded' AS customer_unique_id, 'test_encoded_profile' AS customer_id, 'U' AS operation, TIMESTAMP '2026-01-01 10:00:00+00' AS event_timestamp, TIMESTAMP '2026-01-01 10:00:00+00' AS recorded_at, PARSE_JSON(r'"{\"customer_city\":\"cajamar\",\"customer_state\":\"SP\",\"customer_zip_code_prefix\":\"07787\"}"') AS before_data, PARSE_JSON(r'"{\"customer_city\":\"sao paulo\",\"customer_state\":\"SP\",\"customer_zip_code_prefix\":\"01310\"}"') AS after_data, 1 AS schema_version, TIMESTAMP '2026-01-02 10:00:00+00' AS ingested_at
+  expect:
+    format: sql
+    rows: SELECT 40 AS event_id, 'encoded01' AS event_uuid, 'test_encoded' AS customer_unique_id, 'test_encoded_profile' AS customer_id, 'U' AS operation, TIMESTAMP '2026-01-01 10:00:00+00' AS event_timestamp, TIMESTAMP '2026-01-01 10:00:00+00' AS recorded_at, 1 AS schema_version, TIMESTAMP '2026-01-02 10:00:00+00' AS ingested_at, 'cajamar' AS before_customer_city, 'SP' AS before_customer_state, '07787' AS before_customer_zip_code_prefix, 'sao paulo' AS after_customer_city, 'SP' AS after_customer_state, '01310' AS after_customer_zip_code_prefix, PARSE_JSON('{"customer_city":"cajamar","customer_state":"SP","customer_zip_code_prefix":"07787"}') AS before_json, PARSE_JSON('{"customer_city":"sao paulo","customer_state":"SP","customer_zip_code_prefix":"01310"}') AS after_json
